@@ -1,20 +1,32 @@
 import { useState } from 'react';
 import './Login.css';
+import { authAPI } from '../services/api';
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    // Mockup authentication
-    if (username === 'admin' && password === 'password123') {
-      onLogin();
-      setError('');
-    } else {
-      setError('Invalid username or password. Try admin/password123');
+    try {
+      // API authentication
+      const response = await authAPI.login(username, password);
+      
+      if (response.success) {
+        onLogin(response.user);
+      } else {
+        setError(response.message || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to connect to server. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,8 +65,8 @@ const Login = ({ onLogin }) => {
           
           {error && <div className="error-message">{error}</div>}
           
-          <button type="submit" className="login-button">
-            Login
+          <button type="submit" className="login-button" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
           
           <div className="login-hint">

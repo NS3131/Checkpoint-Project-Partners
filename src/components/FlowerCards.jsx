@@ -1,35 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './FlowerCards.css';
+import { flowersAPI, authAPI } from '../services/api';
 
 const FlowerCards = ({ onLogout }) => {
-  const flowerTypes = [
-    { name: 'Rose', emoji: '🌹', color: '#ff6b9d' },
-    { name: 'Sunflower', emoji: '🌻', color: '#ffd93d' },
-    { name: 'Tulip', emoji: '🌷', color: '#ff6b9d' },
-    { name: 'Cherry Blossom', emoji: '🌸', color: '#ffb7c5' },
-    { name: 'Hibiscus', emoji: '🌺', color: '#ff1744' },
-    { name: 'Blossom', emoji: '🌼', color: '#fff176' },
-    { name: 'Lotus', emoji: '💮', color: '#f8bbd0' },
-    { name: 'Bouquet', emoji: '💐', color: '#ff4081' },
-    { name: 'Daisy', emoji: '🌼', color: '#ffeb3b' },
-    { name: 'Lily', emoji: '🌷', color: '#e91e63' }
-  ];
-
-  // Generate 100 cards (20 rows × 5 columns)
-  const generateCards = () => {
-    const cards = [];
-    for (let i = 0; i < 100; i++) {
-      const flower = flowerTypes[i % flowerTypes.length];
-      cards.push({
-        id: i + 1,
-        ...flower
-      });
-    }
-    return cards;
-  };
-
-  const [cards] = useState(generateCards());
+  const [cards, setCards] = useState([]);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchFlowers();
+  }, []);
+
+  const fetchFlowers = async () => {
+    try {
+      setLoading(true);
+      const response = await flowersAPI.getAll();
+      if (response.success) {
+        setCards(response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching flowers:', err);
+      setError('Failed to load flowers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCardClick = (card) => {
     setSelectedCard(card);
@@ -39,11 +35,44 @@ const FlowerCards = ({ onLogout }) => {
     setSelectedCard(null);
   };
 
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      onLogout();
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Still logout on frontend even if API call fails
+      onLogout();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flower-cards-container">
+        <div style={{ textAlign: 'center', padding: '50px' }}>
+          <h2>Loading flowers...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flower-cards-container">
+        <div style={{ textAlign: 'center', padding: '50px' }}>
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button onClick={fetchFlowers}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flower-cards-container">
       <header className="flower-header">
         <h1>🌸 My Flower Cards Gallery</h1>
-        <button onClick={onLogout} className="logout-button">
+        <button onClick={handleLogout} className="logout-button">
           Logout
         </button>
       </header>
@@ -70,6 +99,11 @@ const FlowerCards = ({ onLogout }) => {
             <div className="modal-flower-emoji">{selectedCard.emoji}</div>
             <h2>{selectedCard.name}</h2>
             <p>Card #{selectedCard.id}</p>
+            {selectedCard.description && (
+              <p style={{ fontStyle: 'italic', margin: '10px 0' }}>
+                {selectedCard.description}
+              </p>
+            )}
             <div className="modal-color" style={{ background: selectedCard.color }}>
               Color Theme
             </div>
